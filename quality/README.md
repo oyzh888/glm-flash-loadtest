@@ -3,6 +3,8 @@
 The speed test in this repo ([`agent/`](../agent), `run_agent_c64.sh`) measures how fast. These scripts measure whether the answers are as good. They produced the quality half of
 <https://reports.aitist.ai/zhongtian/glm-flash-fast-and-correct/>. Every test has an answer that a program can check, and both backends get byte-identical requests at temperature 0.
 
+**One command, from the repository root:** `bash run_quality.sh` runs everything below on both backends and prints one table (≈ 45 min; `QUICK=1` for a ≈ 10 min version with GSM8K and long-context retrieval only). The rest of this page explains each test and how to run it alone.
+
 Needs Python ≥ 3.9 and nothing else (standard library only). Defaults point at `https://glm-flash.aitist.ai`; pin a backend with the model name `glm-zt` (optimized) or `glm-official` (unmodified official SGLang). To use another OpenAI-compatible endpoint set `URL=https://host` (and use its own model names). Please use one test at a time, and stream (the scripts already do).
 
 ```bash
