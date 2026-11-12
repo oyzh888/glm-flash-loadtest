@@ -1,0 +1,5 @@
+{"t0": 1794477509.3222446, "t1": 1794477509.9924119, "ttft": 0.654677152633667, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": false}
+{"t0": 1794477542.685305, "t1": 1794477543.4108608, "ttft": 0.642148494720459, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[4, 5, 7, 8]", "expected": "[4, 5, 7, 8]", "measured": false}
+{"t0": 1794477601.3352158, "t1": 1794477601.9841843, "ttft": 0.6329028606414795, "out": 3, "inp": 686, "cached": 512, "fin": "stop", "text": "SOCKET", "expected": "SOCKET", "measured": true}
+{"t0": 1794477707.9065526, "t1": 1794477708.5531232, "ttft": 0.6455812454223633, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "5", "expected": "5", "measured": true}
+{"t0": 1794477722.2780697, "t1": 1794477722.904349, "ttft": 0.6184065341949463, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "MODULE", "expected": "MODULE", "measured": true}

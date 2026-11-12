@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run_agent_c64.sh — the coding-agent test at 16 / 32 / 64 requests in flight, exactly as we ran it for the published numbers.
 #
-#   bash run_agent_c64.sh                                   # both backends of https://glm-flash.aitist.ai, one after the other (~30 min)
+#   bash run_agent_c64.sh                                   # both backends of https://glm-flash.aitist.ai, 1/4/8/16/32/64 in flight, one after the other (~55 min)
 #   URL=https://<endpoint> MODELS="<model-a> <model-b>" bash run_agent_c64.sh
 #
 # Self-contained: the load generator and corpus are in agent/ (a byte-identical copy of coding-agent-serving-bench
@@ -12,7 +12,7 @@
 set -euo pipefail
 URL=${URL:-https://glm-flash.aitist.ai}
 MODELS=${MODELS:-"glm-official glm-zt"}      # glm-zt = optimized build, glm-official = unmodified official SGLang (baseline)
-CONC=${CONC:-16,32,64}; WARMUP=${WARMUP:-60}; DUR=${DUR:-180}
+CONC=${CONC:-1,4,8,16,32,64}; WARMUP=${WARMUP:-60}; DUR=${DUR:-180}
 HERE=$(cd "$(dirname "$0")" && pwd); A=$HERE/agent; OUT=${OUT:-$PWD/agent-results}
 sha() { python3 -c 'import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$1"; }
 want_run=$(python3 -c 'import json,glob;print(json.load(open(sorted(glob.glob("'"$A"'/results/*/*/summary.json"))[0]))["manifest"]["script_sha256"])')

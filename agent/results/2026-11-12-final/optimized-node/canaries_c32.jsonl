@@ -1,0 +1,32 @@
+{"t0": 1794507652.8724613, "t1": 1794507653.007402, "ttft": 0.06616950035095215, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[2, 5, 8, 9]", "expected": "[2, 5, 8, 9]", "measured": false}
+{"t0": 1794507658.788935, "t1": 1794507658.949634, "ttft": 0.13667082786560059, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "5", "expected": "5", "measured": false}
+{"t0": 1794507662.8961663, "t1": 1794507663.04291, "ttft": 0.12377429008483887, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "88", "expected": "88", "measured": false}
+{"t0": 1794507671.3281133, "t1": 1794507671.5917363, "ttft": 0.2398204803466797, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "12", "expected": "12", "measured": false}
+{"t0": 1794507685.8824596, "t1": 1794507686.0058982, "ttft": 0.0995478630065918, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "THREAD", "expected": "THREAD", "measured": false}
+{"t0": 1794507685.827216, "t1": 1794507686.0489597, "ttft": 0.1542673110961914, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[5, 7, 8, 9]", "expected": "[5, 7, 8, 9]", "measured": false}
+{"t0": 1794507692.5285501, "t1": 1794507692.6494465, "ttft": 0.09721684455871582, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": false}
+{"t0": 1794507694.4240172, "t1": 1794507694.535438, "ttft": 0.08693408966064453, "out": 3, "inp": 686, "cached": 512, "fin": "stop", "text": "CURSOR", "expected": "CURSOR", "measured": false}
+{"t0": 1794507697.6534123, "t1": 1794507697.8904746, "ttft": 0.21553897857666016, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "24", "expected": "24", "measured": false}
+{"t0": 1794507711.1615834, "t1": 1794507711.4377077, "ttft": 0.25121307373046875, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "KERNEL", "expected": "KERNEL", "measured": true}
+{"t0": 1794507722.699083, "t1": 1794507723.0674102, "ttft": 0.3466980457305908, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "80", "expected": "80", "measured": true}
+{"t0": 1794507740.5315566, "t1": 1794507740.6233983, "ttft": 0.06702828407287598, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "40", "expected": "40", "measured": true}
+{"t0": 1794507743.5561783, "t1": 1794507743.678169, "ttft": 0.08907270431518555, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "50", "expected": "50", "measured": true}
+{"t0": 1794507747.0134544, "t1": 1794507747.2262514, "ttft": 0.18745875358581543, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "MODULE", "expected": "MODULE", "measured": true}
+{"t0": 1794507752.8930128, "t1": 1794507752.9844294, "ttft": 0.0665884017944336, "out": 3, "inp": 686, "cached": 512, "fin": "stop", "text": "SCHEMA", "expected": "SCHEMA", "measured": true}
+{"t0": 1794507753.9091103, "t1": 1794507754.0669227, "ttft": 0.13283729553222656, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": true}
+{"t0": 1794507760.8338883, "t1": 1794507761.1105518, "ttft": 0.252838134765625, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": true}
+{"t0": 1794507789.5858748, "t1": 1794507789.6763523, "ttft": 0.06629657745361328, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "5", "expected": "5", "measured": true}
+{"t0": 1794507803.2373803, "t1": 1794507803.4320245, "ttft": 0.1260058879852295, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[2, 5, 8, 9]", "expected": "[2, 5, 8, 9]", "measured": true}
+{"t0": 1794507830.5413842, "t1": 1794507830.8002388, "ttft": 0.23603272438049316, "out": 3, "inp": 686, "cached": 512, "fin": "stop", "text": "WIDGET", "expected": "WIDGET", "measured": true}
+{"t0": 1794507831.5766687, "t1": 1794507831.6998668, "ttft": 0.10215544700622559, "out": 3, "inp": 686, "cached": 512, "fin": "stop", "text": "PARSER", "expected": "PARSER", "measured": true}
+{"t0": 1794507834.3851078, "t1": 1794507834.7437522, "ttft": 0.28960680961608887, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[3, 5, 7, 8]", "expected": "[3, 5, 7, 8]", "measured": true}
+{"t0": 1794507842.2589452, "t1": 1794507842.3907626, "ttft": 0.10802745819091797, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": true}
+{"t0": 1794507847.207082, "t1": 1794507847.3353038, "ttft": 0.10471963882446289, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "15", "expected": "15", "measured": true}
+{"t0": 1794507847.7328215, "t1": 1794507847.9277623, "ttft": 0.16844844818115234, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": true}
+{"t0": 1794507851.7085605, "t1": 1794507851.9263082, "ttft": 0.19401192665100098, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "9", "expected": "9", "measured": true}
+{"t0": 1794507876.191254, "t1": 1794507876.469758, "ttft": 0.21182489395141602, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[5, 6, 8, 9]", "expected": "[5, 6, 8, 9]", "measured": true}
+{"t0": 1794507878.0865726, "t1": 1794507878.289507, "ttft": 0.18441367149353027, "out": 2, "inp": 686, "cached": 512, "fin": "stop", "text": "36", "expected": "36", "measured": true}
+{"t0": 1794507879.5766335, "t1": 1794507879.8229938, "ttft": 0.22182297706604004, "out": 2, "inp": 685, "cached": 512, "fin": "stop", "text": "6", "expected": "6", "measured": true}
+{"t0": 1794507880.947252, "t1": 1794507881.079922, "ttft": 0.1090097427368164, "out": 3, "inp": 686, "cached": 512, "fin": "stop", "text": "SCHEMA", "expected": "SCHEMA", "measured": true}
+{"t0": 1794507886.6078365, "t1": 1794507886.7443144, "ttft": 0.06698036193847656, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[1, 3, 4, 9]", "expected": "[1, 3, 4, 9]", "measured": true}
+{"t0": 1794507888.213285, "t1": 1794507888.5688486, "ttft": 0.2810811996459961, "out": 13, "inp": 694, "cached": 512, "fin": "stop", "text": "[3, 4, 5, 9]", "expected": "[3, 4, 5, 9]", "measured": true}

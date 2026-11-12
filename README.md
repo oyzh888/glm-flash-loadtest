@@ -9,8 +9,33 @@ comparison between two deployments fair?*
 - reports throughput and p50 / p95 / p99 latency with the same definitions as common serving benchmarks
 - one command to run, one command to compare several runs in a single table
 
-It measures **speed only, not answer quality**. It is model- and engine-agnostic: anything that serves
+The `replay.py` test measures **speed only, not answer quality**; answer quality has its own tests in [`quality/`](quality). It is model- and engine-agnostic: anything that serves
 `/v1/chat/completions` with streaming and `usage` works. The default model name is `zai-org/GLM-5.3-Flash`; change it with `MODEL=`.
+
+## Reproduce the GLM-5.3-Flash report
+
+Report: <https://reports.aitist.ai/zhongtian/glm-flash-fast-and-correct/> — the optimized GLM-5.3-Flash (`glm-zt`) vs unmodified official SGLang (`glm-official`), 8× L20X per backend, served at `https://glm-flash.aitist.ai` (no API key; the model name pins the backend).
+Everything the report used is in this repository. You need Python ≥ 3.9 and `pip install aiohttp`; no GPU.
+
+| What the report shows | How to reproduce it | Time | Where the numbers are |
+|---|---|---|---|
+| **Speed**: 1→64 coding agents in flight, output tok/s, TTFT, TPOT, E2E | `bash run_agent_c64.sh` | ≈ 55 min | [`agent/results/2026-11-12-final/`](agent/results/2026-11-12-final) |
+| **Quality**: GSM8K, HumanEval, tool calls, long output, long-context retrieval | `bash run_quality.sh` | ≈ 45 min | [`quality/README.md`](quality/README.md) |
+
+```bash
+git clone https://github.com/oyzh888/glm-flash-loadtest && cd glm-flash-loadtest
+pip install aiohttp
+bash run_agent_c64.sh        # speed: both backends, 1/4/8/16/32/64 in flight, prints one comparison table at the end
+bash run_quality.sh          # quality: both backends, all five checks, prints one table at the end
+# compare with our raw results (same table format, offline):
+python3 agent/bench/compare.py agent/results/2026-11-12-final/official-public agent/results/2026-11-12-final/optimized-public
+```
+
+Notes that matter when you compare your numbers with ours:
+- **Run one test at a time and say so.** The endpoint is shared. If someone else is using a backend while you test it, your numbers drop. The speed test checks idle at the start and end; with the server log streamed in (`SERVER_LOG_CMD`, operators only) it also proves nobody else was on the server.
+- **Your TTFT includes your own round trip** to Cloudflare (ours from a workstation: about 0.8 s at low load, versus ~0.1 s with the client on the server node). Throughput should be close to ours.
+- **Text is not byte-identical at temperature 0 under load** (batching changes floating-point summation order). The quality tests compare final answers and accuracy, not text.
+- A configuration of the optimized build that passed GSM8K but silently answered wrongly on long prompts existed before this report; `quality/longctx_suite.py` is the test that catches it, and the speed numbers in this repository are from the corrected build.
 
 ## 1. The workload
 
@@ -164,7 +189,7 @@ once" is a separate question, so it has its own test in `agent/`.
 | `agent/bench/run.py` | load generator (sha256 `f2abcfcbe416…`) |
 | `agent/bench/compare.py` | turns several runs into one table |
 | `agent/corpus/coding_v1.jsonl.gz` | the request corpus (sha256 `6e93e8a5f3f6…`) |
-| `agent/results/2026-11-12-glm-flash-l20x/`, `agent/results/2026-11-12-glm-flash-l20x-c1-8/` | our raw results (16/32/64 and 1/4/8): summary, every request, canaries, `SHA256SUMS` |
+| `agent/results/2026-11-12-final/` | our raw results for the report: `official-public`, `optimized-public`, `official-node`, `optimized-node` (1/4/8/16/32/64 each): summary, every request, canaries, `SHA256SUMS`. Earlier runs in the sibling folders are superseded |
 | `run_agent_c64.sh` | one command that checks the hashes and runs the test |
 
 `agent/` is a byte-identical copy of the load generator and corpus from coding-agent-serving-bench, commit `78d9cc3e14ff`
@@ -178,15 +203,15 @@ shasum -a 256 agent/bench/run.py agent/corpus/coding_v1.jsonl.gz
 grep -h -o '"\(script\|corpus\)_sha256": "[0-9a-f]*"' agent/results/*/*/summary.json | sort | uniq -c
 ```
 
-Both hashes appear in all six of our result sets. `run_agent_c64.sh` refuses to run if the local files differ.
+Both hashes appear in every one of our result sets. `run_agent_c64.sh` refuses to run if the local files differ.
 
 **Reproduce:**
 
 ```bash
 pip install aiohttp
-bash run_agent_c64.sh                    # https://glm-flash.aitist.ai, glm-official then glm-zt, ~30 min, one table
-CONC=1,4,8 bash run_agent_c64.sh         # the low-concurrency levels, same script
-python3 agent/bench/compare.py agent-results/glm-official agent-results/glm-zt agent/results/2026-11-12-glm-flash-l20x/*-https
+bash run_agent_c64.sh                    # https://glm-flash.aitist.ai, glm-official then glm-zt, 1/4/8/16/32/64, ~55 min, one table
+CONC=16,32,64 bash run_agent_c64.sh      # a shorter run (~30 min)
+python3 agent/bench/compare.py agent-results/glm-official agent-results/glm-zt agent/results/2026-11-12-final/official-public agent/results/2026-11-12-final/optimized-public
 ```
 
 On `https://glm-flash.aitist.ai`, the model name selects the backend: `glm-zt` is the optimized build and `glm-official` is
@@ -194,27 +219,21 @@ unmodified official SGLang. Both run on identical 8× L20X 141 GB nodes with the
 is needed, and up to 64 requests may be in flight per client IP. The 5-in-flight test above (`replay.py` / `run_bench.sh`) is a
 different workload, and its numbers are not comparable with these.
 
-**Our results** (2026-11-12, same command from a workstation on the public internet, 8× L20X per backend):
+**Our results** (2026-11-12, corrected build; raw per-request data in [`agent/results/2026-11-12-final/`](agent/results/2026-11-12-final)).
+Output tokens/s, glm-official → **glm-zt**, with the client on the public internet (`*-public`) and on the server node itself (`*-node`):
 
-| Concurrency | Output tok/s: glm-official → **glm-zt** | TTFT p50 / p99 (ms): glm-official → **glm-zt** | TPOT p50 (ms): official → zt |
-|---:|---|---|---|
-| 16 | 972 → **1,619 (1.67×)** | 561 / 795 → **580 / 757** | 14.1 → 7.7 |
-| 32 | 1,469 → **2,418 (1.65×)** | 582 / 804 → **604 / 861** | 19.1 → 10.8 |
-| 64 | 2,112 → **3,297 (1.56×)** | 603 / 900 → **650 / 1,054** | 27.1 → 16.3 |
+| In flight | Public HTTPS | Client on the server node |
+|---:|---|---|
+| 1 | 96 → **142 (1.47×)** | 130 → **232 (1.78×)** |
+| 4 | 344 → **537 (1.56×)** | 415 → **713 (1.72×)** |
+| 8 | 608 → **944 (1.55×)** | 694 → **1,153 (1.66×)** |
+| 16 | 954 → **1,540 (1.61×)** | 1,036 → **1,768 (1.71×)** |
+| 32 | 1,445 → **2,382 (1.65×)** | 1,550 → **2,623 (1.69×)** |
+| 64 | 2,032 → **3,402 (1.67×)** | 2,149 → **3,601 (1.68×)** |
 
-Low concurrency, same script (`CONC=1,4,8`), same day, same path:
+Whole-request time (E2E p50) at 64 in flight: public 6.71 → **4.23 s**, on-node 6.09 → **3.85 s**. Time to first token is the one thing that gets longer at high load (on-node p50 at 64: 143 → 326 ms), because the optimized server runs several decode rounds between prefill batches. 0 failed requests on every level; every integrity check passed. The public runs of both backends passed the server-log exclusivity check on every level.
 
-| Concurrency | Output tok/s: glm-official → **glm-zt** | TTFT p50 (ms): official → zt | TPOT p50 (ms): official → zt |
-|---:|---|---|---|
-| 1 | 99 → **156 (1.57×)** | 666 → 686 | 7.6 → 4.0 |
-| 4 | 374 → **583 (1.56×)** | 532 → 562 | 8.7 → 4.8 |
-| 8 | 636 → **1,005 (1.58×)** | 542 → 562 | 10.6 → 6.0 |
-
-All integrity checks passed on every level of all runs, with 0 failed requests. Our server logs were streamed in, so the exclusivity check passed.
-One exception is worth knowing about. During the last ~1 min of glm-zt's 8-agent level, one request from another user (25K output tokens) was also running.
-The exclusivity rule tolerates one extra request, so the check still passed. That overlap can only have lowered glm-zt's number; the server's "idle after" check recorded it.
-With the client on the server node itself (`official-sglang`, `a1-l20x`), the same backends reach 2,148 → 3,357 tok/s at 64. The
-public path adds a flat ~0.45 s to time to first token and costs 2–9% of throughput.
+**Earlier numbers in this repository are superseded.** `agent/results/2026-11-12-glm-flash-l20x/` and `...-c1-8/` hold runs of an earlier optimized configuration (prefill chunks of 16,384 tokens), which answered uncached prompts of about 10K tokens or more wrongly (short-prompt checks did not show it). Their `glm-official` / `official-*` runs are still valid; the optimized runs there are not, see the `SUPERSEDED.md` next to them.
 
 What to watch for when you reproduce:
 
@@ -262,7 +281,7 @@ thinking time. That is exactly the kind of difference the checklist below exists
 
 ## 6. What this test does not cover
 
-High concurrency (dozens to hundreds of long sessions), much longer inputs, answer quality, and sampling settings other
+Hundreds of long sessions, inputs beyond ~100K tokens (the model accepts 1M, but retrieval is unreliable past ~130K on a synthetic test), and sampling settings other
 than the server default (requests carry no `temperature` unless you pass one).
 
 ## Files
@@ -273,7 +292,8 @@ than the server default (requests carry no `temperature` unless you pass one).
 | `replay.py` | Load generator: closed-loop replay, three cache modes, TTFT / TPOT / ITL / E2E percentiles |
 | `run_bench.sh` | Runs the three cache states and prints a table |
 | `summarize.py` | Merges `summary.json` files from several setups into one Markdown table |
-| `run_agent_c64.sh`, `agent/` | Coding-agent test at 16 / 32 / 64 in flight (section 3.4): load generator, corpus, our raw results |
+| `run_agent_c64.sh`, `agent/` | Coding-agent test at 1 to 64 in flight (section 3.4): load generator, corpus, our raw results |
+| `run_quality.sh`, `quality/` | Answer-quality tests: GSM8K, HumanEval, tool calls, long output, long-context retrieval, prompt parity |
 | `corpus.jsonl.gz` | The 200-prompt corpus used for every number above |
 | `gen_corpus.py` | Rebuilds a similar corpus (needs network access and a tokenizer file) |
 | `example-results/` | Raw summaries from three example deployments |
