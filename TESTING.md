@@ -70,6 +70,30 @@ python3 bench_lock.py run --purpose "TTFT replay" -- \
 `replay/` re-creates the shape of a TTFT-focused test (six phases from ~16-token pings to 148K-token prompts); see
 [`replay/README.md`](replay/README.md).
 
+## 3b. The full benchmark in one command: `run_all.sh`
+
+```bash
+export BENCH_OWNER="your-team"
+bash run_all.sh                       # glm-official vs glm-zt: agent + mix + phases + quality, then one summary table
+TESTS="mix phases" bash run_all.sh    # a subset
+```
+
+| Test | What it measures |
+|---|---|
+| `agent` | coding-agent corpus (120 sessions, ~19K-token prompts), closed loop at 1 / 16 / 64 in flight (`AGENT_CONC`) |
+| `mix` | the real request mix of a TTFT-focused evaluation (six request shapes, weighted by how often each occurred), closed loop at 1 / 4 / 8 / 16 / 32 / 64 (`MIX_LEVELS`) |
+| `phases` | each of those six request shapes at its own concurrency (TTFT p50 / p99 per shape) |
+| `quality` | GSM8K ×2, GSM8K with thinking, HumanEval (unit tests executed), tool calls, long output, long-context retrieval |
+
+All tests send identical requests to both backends, at most 64 in flight, and check that every response has exactly the
+requested length. The whole run holds the test lock.
+
+**Results cache.** `GET /api/backends` publishes each backend's server-configuration fingerprint (`config_sha` plus the
+settings that affect speed or answers). A result is reused when the test, its arguments, the scripts, the corpus /
+profile and that fingerprint are all unchanged, so re-running `run_all.sh` after a server change only measures what
+changed (`FORCE=1` re-measures everything). Results are in `results-cache/<test>/<model>/<key>/`, the table in
+`results-cache/summary.md`.
+
 ## 4. Rules
 
 | Rule | Value |
