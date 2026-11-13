@@ -81,7 +81,8 @@ python3 bench_lock.py run --purpose "TTFT replay" -- \
 
 ## 6. Reading TTFT correctly
 
-TTFT measured at your client = your network path to the endpoint + gateway + server queueing + prefill. On the server
-itself, a cached prompt reaches its first token in about 0.05 s; today the gateway sits in Europe while the GPUs are in
-Singapore, which adds about 0.5 s per request (we are working on moving it next to the GPUs). When you compare
-providers, compare from the same client location, with the same prompts, thinking setting and streaming mode.
+TTFT measured at your client = your network path to the endpoint + gateway + server queueing + prefill. Since
+13 Nov 2026 the gateway runs next to the GPUs in Singapore (Cloudflare's Singapore edge), so from Southeast Asia a
+cached prompt reaches its first token in about 0.1–0.15 s (measured from Singapore), and from Europe in about 0.4–0.7 s.
+When you compare providers, compare from the same client location, with the same prompts, thinking setting and
+streaming mode.
