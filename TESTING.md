@@ -15,7 +15,7 @@ LEASE=$(curl -s -X POST $BASE/api/bench/lock -H 'Content-Type: application/json'
 
 # every request carries the lease (OpenAI or Anthropic format)
 curl -sN $BASE/v1/chat/completions -H "Authorization: Bearer $LEASE" -H 'Content-Type: application/json' \
-  -d '{"model": "glm-zt", "stream": true, "max_tokens": 64, "messages": [{"role": "user", "content": "Hello"}]}'
+  -d '{"model": "glm-zt", "stream": true, "max_tokens": 64, "chat_template_kwargs": {"enable_thinking": false}, "messages": [{"role": "user", "content": "Hello"}]}'
 
 # done: give it back (otherwise it expires 10 minutes after your last request)
 curl -s -X POST $BASE/api/bench/release -H 'Content-Type: application/json' -d "{\"lease\": \"$LEASE\"}"
@@ -33,7 +33,8 @@ Use the lease as the API key: base URL `https://glm-flash.aitist.ai/v1`, API key
 from openai import OpenAI
 client = OpenAI(base_url="https://glm-flash.aitist.ai/v1", api_key=LEASE)
 stream = client.chat.completions.create(model="glm-zt", stream=True, max_tokens=64,
-                                        messages=[{"role": "user", "content": "Hello"}])
+                                        messages=[{"role": "user", "content": "Hello"}],
+                                        extra_body={"chat_template_kwargs": {"enable_thinking": False}})  # thinking is on by default
 ```
 
 Most load-test tools accept an API key or extra headers, so this works without code changes: vLLM `benchmark_serving`,
@@ -62,10 +63,11 @@ python3 bench_lock.py run --purpose "TTFT replay" -- \
 | Rule | Value |
 |---|---|
 | Requests in flight without a lease | up to 4 per client address (casual use) — more needs the lock |
-| Requests in flight with the lease | up to 128 in total, from any number of machines |
+| Requests in flight with the lease | **please stay at or below 64 for now** (128 is technically allowed, but above 64 requests queue on the server and some fail; we will announce when 128 is supported) |
 | Lease expiry | 10 minutes after your last request or renewal; 2 hours at the latest |
 | Requests from others while you hold it | rejected with HTTP 429 and `Retry-After`, with your owner name and expected end |
-| Long requests | use streaming; Cloudflare closes non-streaming responses that send nothing for ~100 s |
+| Long requests | use streaming; Cloudflare closes non-streaming responses that send nothing for ~100 s. With thinking on, single requests can run several minutes: set client timeouts to ≥ 600 s |
+| Thinking | **on by default**. The reasoning streams in `delta.reasoning_content`, the answer in `delta.content`; with a small `max_tokens` the whole budget can go to reasoning and `content` stays empty. To turn it off send `"chat_template_kwargs": {"enable_thinking": false}` (OpenAI SDK: `extra_body={...}`) |
 
 ## 5. What we record, and why
 
