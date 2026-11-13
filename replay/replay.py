@@ -23,6 +23,7 @@ ap.add_argument('--seconds', type=float, default=120); ap.add_argument('--warmup
 ap.add_argument('--concurrency', type=int, default=0, help='override every phase\'s concurrency (0 = profile value)')
 ap.add_argument('--max-concurrency', type=int, default=64); ap.add_argument('--temperature', type=float, default=0.6)
 ap.add_argument('--seed', type=int, default=1); ap.add_argument('--out', default='replay-results/run')
+ap.add_argument('--resummarize', default=None, help='recompute summary.json of an existing result directory from its requests_*.jsonl (no requests sent)')
 A = ap.parse_args()
 PROF = json.load(open(A.profile)); PH = {p['name']: p for p in PROF['phases']}
 H = {'Content-Type': 'application/json', 'User-Agent': 'glm-partner-replay/1.1'}
@@ -80,16 +81,29 @@ def run(label, samples, conc):
     ts = [threading.Thread(target=worker, daemon=True) for _ in range(conc)]
     for t in ts: t.start()
     for t in ts: t.join()
-    return conc, res
+    return conc, res, t_meas
 def q(xs, f):
     xs = sorted(x for x in xs if x is not None); return round(xs[int(f * (len(xs) - 1))], 4) if xs else None
-def summarize(label, conc, res):
+def tokens_in_window(res, t0w, t1w):
+    """Output tokens generated inside [t0w, t1w]: each request's tokens are spread evenly over its decode interval
+    (first token -> last token) and only the part inside the window counts. Counting every token of requests that merely
+    *started* in the window would inflate throughput (a long request started near the end runs far past it), and more so
+    for the slower side."""
+    tot = 0.0
+    for r in res:
+        if r.get('err') or not r.get('ttft') or not r.get('out'): continue
+        a, b = r['t0'] + r['ttft'], r['t0'] + r['e2e']
+        if b <= a: tot += r['out'] if t0w <= b <= t1w else 0; continue
+        tot += r['out'] * max(0.0, min(b, t1w) - max(a, t0w)) / (b - a)
+    return tot
+def summarize(label, conc, res, t_meas=None):
+    if t_meas is None: t_meas = min(r['t0'] for r in res) + A.warmup
     m = [r for r in res if r['measured']]; ok = [r for r in m if not r['err']]
     return dict(label=label, concurrency=conc, requests=len(m), errors=len(m) - len(ok),
                 ttft_p50=q([r['ttft'] for r in ok], .5), ttft_p90=q([r['ttft'] for r in ok], .9), ttft_p99=q([r['ttft'] for r in ok], .99),
                 tpot_p50_ms=round(1000 * q([r['tpot'] for r in ok], .5), 2) if ok and q([r['tpot'] for r in ok], .5) else None,
                 e2e_p50=q([r['e2e'] for r in ok], .5), e2e_p90=q([r['e2e'] for r in ok], .9),
-                output_tok_s=round(sum(r['out'] for r in ok) / A.seconds, 1), requests_per_s=round(len(m) / A.seconds, 2),
+                output_tok_s=round(tokens_in_window(res, t_meas, t_meas + A.seconds) / A.seconds, 1), requests_per_s=round(len([r for r in ok if t_meas <= r['t0'] + r['e2e'] <= t_meas + A.seconds]) / A.seconds, 2),
                 exact_output_frac=round(sum(1 for r in ok if r['out'] == r['want_out']) / max(1, len(ok)), 3),
                 prompt_tokens_p50=q([r['prompt_tokens'] for r in ok], .5),
                 cache_hit=round(sum(r['cached'] or 0 for r in ok) / max(1, sum(r['prompt_tokens'] or 0 for r in ok)), 3),
@@ -100,6 +114,17 @@ def backend_config():
             if b['id'] == A.model or (b.get('config') or {}).get('served_model_name') == A.model: return {'config_sha': b.get('config_sha'), 'config': b.get('config')}
     except Exception: pass
     return {}
+if A.resummarize:
+    S = json.load(open(os.path.join(A.resummarize, 'summary.json'))); new = []
+    for s0 in S['runs']:
+        R = [json.loads(l) for l in open(os.path.join(A.resummarize, 'requests_%s_c%d.jsonl' % (s0['label'], s0['concurrency'])))]
+        x = summarize(s0['label'], s0['concurrency'], R)
+        if 'description' in s0: x['description'] = s0['description']
+        new.append(x)
+    S['runs'] = new; S['manifest']['resummarized_with'] = hashlib.sha256(open(__file__, 'rb').read()).hexdigest()
+    json.dump(S, open(os.path.join(A.resummarize, 'summary.json'), 'w'), indent=1)
+    for x in new: print(x['label'], x['concurrency'], x['output_tok_s'])
+    sys.exit(0)
 os.makedirs(A.out, exist_ok=True)
 manifest = dict(url=A.url, model=A.model, started=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), salt=SALT, seed=A.seed,
                 profile_sha256=hashlib.sha256(open(A.profile, 'rb').read()).hexdigest(), script_sha256=hashlib.sha256(open(__file__, 'rb').read()).hexdigest(),
@@ -113,14 +138,14 @@ if A.mix:
     random.Random('%d-mix' % A.seed).shuffle(pool)
     manifest['mix_weights'] = {p['name']: round(p['observed_requests'] / sum(x['observed_requests'] for x in PROF['phases']), 3) for p in PROF['phases']}
     for c in [int(x) for x in (A.levels or '1,4,8,16,32,64').split(',')]:
-        conc, res = run('mix', pool, c); runs.append(summarize('mix', conc, res)); print(json.dumps(runs[-1]), flush=True)
+        conc, res, tm = run('mix', pool, c); runs.append(summarize('mix', conc, res, tm)); print(json.dumps(runs[-1]), flush=True)
         with open(os.path.join(A.out, 'requests_mix_c%d.jsonl' % conc), 'w') as f:
             for r in res: f.write(json.dumps(r) + '\n')
 else:
     for name in A.phases.split(','):
         S = [[name] + s for s in PH[name]['samples']]; random.Random('%d-%s' % (A.seed, name)).shuffle(S)
         for c in ([int(x) for x in A.levels.split(',')] if A.levels else [A.concurrency or PH[name]['concurrency']]):
-            conc, res = run(name, S, c); runs.append(dict(summarize(name, conc, res), description=PH[name]['description'])); print(json.dumps(runs[-1]), flush=True)
+            conc, res, tm = run(name, S, c); runs.append(dict(summarize(name, conc, res, tm), description=PH[name]['description'])); print(json.dumps(runs[-1]), flush=True)
             with open(os.path.join(A.out, 'requests_%s_c%d.jsonl' % (name, conc)), 'w') as f:
                 for r in res: f.write(json.dumps(r) + '\n')
 json.dump(dict(manifest=manifest, runs=runs), open(os.path.join(A.out, 'summary.json'), 'w'), indent=1)
