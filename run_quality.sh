@@ -5,6 +5,9 @@
 #   QUICK=1 bash run_quality.sh                           # ~10 min: GSM8K + long-context retrieval only
 # Needs Python >= 3.9 and nothing else (standard library). Writes quality-results/<model>/ and quality-results/table.md.
 set -euo pipefail
+if [ -z "${BENCH_LEASE:-}" ] && [ -z "${NO_BENCH_LOCK:-}" ]; then   # take the endpoint's test lock for the whole run (see bench_lock.py)
+  exec python3 "$(cd "$(dirname "$0")" && pwd)/bench_lock.py" run --url "${URL:-https://glm-flash.aitist.ai}" --owner "${BENCH_OWNER:-${USER:-anonymous}}" --purpose "${BENCH_PURPOSE:-run_quality.sh}" -- bash "$0" "$@"
+fi
 HERE=$(cd "$(dirname "$0")" && pwd); Q=$HERE/quality
 export URL=${URL:-https://glm-flash.aitist.ai}
 MODELS=${MODELS:-"glm-official glm-zt"}      # glm-zt = optimized build, glm-official = unmodified official SGLang

@@ -5,6 +5,7 @@ ap=argparse.ArgumentParser();ap.add_argument('--url',default=os.environ.get('URL
 ap.add_argument('--sizes',default='200,600,1200,2000,3000');ap.add_argument('--per',type=int,default=4);ap.add_argument('--out');ap.add_argument('--seed',type=int,default=0)
 A=ap.parse_args()
 H={'Content-Type':'application/json','User-Agent':'zt-gsm8k-consistency/1.0','x-dynamo-meta-policy-class':'batch'}
+if os.environ.get('BENCH_LEASE'): H['Authorization']='Bearer '+os.environ['BENCH_LEASE']   # test lock lease (bench_lock.py)
 W=['alpha','beta','gamma','delta','omega','sigma']
 def mk(n,seed):
     r=random.Random(seed); codes=[r.randint(1000,9999) for _ in range(n)]; k=r.randint(n//10,n-1-n//10)
