@@ -2,9 +2,11 @@
 """summarize_all.py <cache dir> <baseline model> <candidate model>: one Markdown summary of run_all.sh results.
 For each test it takes the newest finished result per model and prints the candidate next to the baseline with ratios."""
 import json, os, sys, glob
-cache, models = sys.argv[1], sys.argv[2:]
-base, cand = (models + [None, None])[:2]
+cache, models = sys.argv[1], sys.argv[2:] or ['glm-official', 'glm-zt']
+if len(models) == 1: models = ['glm-official', 'glm-zt']   # always compare the pair; missing results are skipped
+base, cand = models[:2]
 def newest(test, m):
+    if not m: return None
     ds = [d for d in glob.glob(os.path.join(cache, test, m, '*')) if os.path.exists(os.path.join(d, 'DONE'))]
     return max(ds, key=lambda d: os.path.getmtime(os.path.join(d, 'DONE'))) if ds else None
 def done(d): return json.load(open(os.path.join(d, 'DONE')))

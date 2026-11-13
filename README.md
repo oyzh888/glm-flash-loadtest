@@ -298,6 +298,7 @@ than the server default (requests carry no `temperature` unless you pass one).
 | `summarize.py` | Merges `summary.json` files from several setups into one Markdown table |
 | `run_agent_c64.sh`, `agent/` | Coding-agent test at 1 to 64 in flight (section 3.4): load generator, corpus, our raw results |
 | `TESTING.md`, `BENCH_LOCK.md`, `bench_lock.py` | How to test the endpoint fairly: the test lock, examples, what we record |
+| `run_all.sh`, `summarize_all.py` | The full fair benchmark (agent + customer mix + phases + quality, both backends) in one command, with a results cache keyed on the server-config fingerprint |
 | `replay/` | Re-create a real traffic shape (`replay.py` + profile) or replay a captured benchmark exactly (`replay_capture.py`) |
 | `run_quality.sh`, `quality/` | Answer-quality tests: GSM8K, HumanEval, tool calls, long output, long-context retrieval, prompt parity |
 | `corpus.jsonl.gz` | The 200-prompt corpus used for every number above |

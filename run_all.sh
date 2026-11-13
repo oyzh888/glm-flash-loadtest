@@ -51,4 +51,4 @@ for M in $MODELS; do
     echo "{\"test\": \"$T\", \"model\": \"$M\", \"config_sha\": \"$C\", \"key\": \"$KEY\", \"finished\": \"$(date -u +%FT%TZ)\"}" > "$D/DONE"
   done
 done
-python3 "$HERE/summarize_all.py" "$CACHE" $MODELS | tee "$CACHE/summary.md"
+python3 "$HERE/summarize_all.py" "$CACHE" ${SUMMARY_MODELS:-glm-official glm-zt} | tee "$CACHE/summary.md"
