@@ -12,6 +12,10 @@ comparison between two deployments fair?*
 The `replay.py` test measures **speed only, not answer quality**; answer quality has its own tests in [`quality/`](quality). It is model- and engine-agnostic: anything that serves
 `/v1/chat/completions` with streaming and `usage` works. The default model name is `zai-org/GLM-5.3-Flash`; change it with `MODEL=`.
 
+## Testing the endpoint: take the test lock first
+
+`https://glm-flash.aitist.ai` serves one benchmark at a time. **Read [TESTING.md](TESTING.md)**: take the lock, send the lease as your API key, release it when done. Our scripts below do this automatically. To re-create a TTFT-focused test from a real traffic shape, see [`replay/`](replay/README.md).
+
 ## Reproduce the GLM-5.3-Flash report
 
 Report: <https://reports.aitist.ai/zhongtian/glm-flash-fast-and-correct/> — the optimized GLM-5.3-Flash (`glm-zt`) vs unmodified official SGLang (`glm-official`), 8× L20X per backend, served at `https://glm-flash.aitist.ai` (no API key; the model name pins the backend).
@@ -293,6 +297,8 @@ than the server default (requests carry no `temperature` unless you pass one).
 | `run_bench.sh` | Runs the three cache states and prints a table |
 | `summarize.py` | Merges `summary.json` files from several setups into one Markdown table |
 | `run_agent_c64.sh`, `agent/` | Coding-agent test at 1 to 64 in flight (section 3.4): load generator, corpus, our raw results |
+| `TESTING.md`, `BENCH_LOCK.md`, `bench_lock.py` | How to test the endpoint fairly: the test lock, examples, what we record |
+| `replay/` | Re-create a real traffic shape (`replay.py` + profile) or replay a captured benchmark exactly (`replay_capture.py`) |
 | `run_quality.sh`, `quality/` | Answer-quality tests: GSM8K, HumanEval, tool calls, long output, long-context retrieval, prompt parity |
 | `corpus.jsonl.gz` | The 200-prompt corpus used for every number above |
 | `gen_corpus.py` | Rebuilds a similar corpus (needs network access and a tokenizer file) |
