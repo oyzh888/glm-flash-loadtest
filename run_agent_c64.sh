@@ -10,6 +10,11 @@
 # Optional: SERVER_LOG_CMD='<command that streams the server log>' enables the exclusivity check (server operators only).
 # Needs Python >= 3.9 and aiohttp. Writes agent-results/<model>/ and agent-results/compare.md.
 set -euo pipefail
+# Test lock: the endpoint serves one benchmark at a time. Unless you already hold a lease ($BENCH_LEASE), this script
+# re-runs itself under bench_lock.py, which takes the lock (waiting in line if needed), renews it and releases it at the end.
+if [ -z "${BENCH_LEASE:-}" ] && [ -z "${NO_BENCH_LOCK:-}" ]; then
+  exec python3 "$(cd "$(dirname "$0")" && pwd)/bench_lock.py" run --url "${URL:-https://glm-flash.aitist.ai}" --owner "${BENCH_OWNER:-${USER:-anonymous}}" --purpose "${BENCH_PURPOSE:-run_agent_c64.sh CONC=${CONC:-1,4,8,16,32,64}}" -- bash "$0" "$@"
+fi
 URL=${URL:-https://glm-flash.aitist.ai}
 MODELS=${MODELS:-"glm-official glm-zt"}      # glm-zt = optimized build, glm-official = unmodified official SGLang (baseline)
 CONC=${CONC:-1,4,8,16,32,64}; WARMUP=${WARMUP:-60}; DUR=${DUR:-180}
@@ -26,7 +31,7 @@ for M in $MODELS; do
   echo "== $M @ $URL  concurrency $CONC, warm-up ${WARMUP}s, measured ${DUR}s per level"
   python3 "$A/bench/run.py" --url "$URL" --model "$M" --label "$M" --out "$OUT/$M" \
     --concurrency "$CONC" --warmup "$WARMUP" --duration "$DUR" --hardware "${HARDWARE:-}" \
-    ${SERVER_LOG_CMD:+--server-log-cmd "$SERVER_LOG_CMD"} ${RARGS:-}
+    ${SERVER_LOG_CMD:+--server-log-cmd "$SERVER_LOG_CMD"} ${BENCH_LEASE:+--api-key-env BENCH_LEASE} ${RARGS:-}
 done
 python3 "$A/bench/compare.py" $(for M in $MODELS; do echo "$OUT/$M"; done) --md "$OUT/compare.md"
 echo "table: $OUT/compare.md   (ours: python3 agent/bench/compare.py agent/results/2026-11-12-glm-flash-l20x/*)"

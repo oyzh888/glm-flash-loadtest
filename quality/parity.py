@@ -3,6 +3,7 @@ import json,urllib.request,sys
 import os
 URL=os.environ.get('URL','https://glm-flash.aitist.ai')+'/v1/chat/completions'
 H={'Content-Type':'application/json','User-Agent':'zt-gsm8k-consistency/1.0','x-dynamo-meta-policy-class':'batch'}
+if os.environ.get('BENCH_LEASE'): H['Authorization']='Bearer '+os.environ['BENCH_LEASE']   # test lock lease (bench_lock.py)
 tools=[{"type":"function","function":{"name":"get_weather","description":"Get current weather for a city","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}}]
 long_doc=" ".join(f"Line {i}: the quick brown fox jumps over the lazy dog, item {i*7%1000}." for i in range(1400))
 cases={

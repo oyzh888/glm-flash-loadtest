@@ -5,6 +5,7 @@ qs=[json.loads(l) for l in open(os.path.join(os.environ.get('DATA_DIR','.'),'tes
 import os
 URL=os.environ.get('URL','https://glm-flash.aitist.ai')+'/v1/chat/completions'
 H={'Content-Type':'application/json','User-Agent':'zt-gsm8k-consistency/1.0','x-dynamo-meta-policy-class':'batch'}
+if os.environ.get('BENCH_LEASE'): H['Authorization']='Bearer '+os.environ['BENCH_LEASE']   # test lock lease (bench_lock.py)
 def ask(i):
     q=qs[i]
     body={"model":model,"stream":True,"messages":[{"role":"user","content":q['question']+"\nSolve step by step, then give the final answer on the last line as: #### <number>"}],

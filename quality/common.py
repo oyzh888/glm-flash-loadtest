@@ -2,6 +2,7 @@ import json,urllib.request,time
 import os
 URL=os.environ.get('URL','https://glm-flash.aitist.ai')
 H={'Content-Type':'application/json','User-Agent':'zt-gsm8k-consistency/1.0','x-dynamo-meta-policy-class':'batch'}
+if os.environ.get('BENCH_LEASE'): H['Authorization']='Bearer '+os.environ['BENCH_LEASE']   # test lock lease (bench_lock.py)
 def chat(model,messages,max_tokens=1024,thinking=False,temperature=0,url=None,**kw):
     b=dict(model=model,temperature=temperature,max_tokens=max_tokens,stream=True,stream_options={"include_usage":True},messages=messages,chat_template_kwargs={"enable_thinking":thinking},**kw)
     err=None
