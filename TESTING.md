@@ -4,6 +4,18 @@ The endpoint serves **one benchmark at a time**. Take the test lock before a loa
 request, release it when you are done. While you hold it nobody else's traffic reaches the servers, so your numbers
 are not mixed with anyone else's, and ours are not mixed with yours.
 
+## Checklist for your official test
+
+1. **Take the test lock** (`POST /api/bench/lock`, section 1). Without it, more than 4 parallel requests from one address are rejected with HTTP 429.
+2. **Use the lease as your API key**: base URL `https://glm-flash.aitist.ai/v1`, API key = lease, model `glm-zt` (optimized) or `glm-official` (unmodified official SGLang). Any OpenAI-compatible client or benchmark tool works (section 2).
+3. **Stream** (`"stream": true`).
+4. **Thinking is on by default.** Reasoning arrives in `delta.reasoning_content`, the answer in `delta.content`. With a small `max_tokens` the whole budget can go to reasoning and `content` stays empty. To test without thinking send `"chat_template_kwargs": {"enable_thinking": false}` (OpenAI SDK: `extra_body={"chat_template_kwargs": {"enable_thinking": False}}`).
+5. **Keep concurrency at or below 64** for now (above 64, requests queue on the server; we will announce when 128 is supported).
+6. **Client timeout ≥ 600 s**: with thinking on, a single long answer can take several minutes.
+7. **Release the lock when done** (`POST /api/bench/release`); it also expires 10 minutes after your last request. `GET /api/bench/status` shows who is testing.
+
+The gateway runs in Singapore next to the GPUs: from Southeast Asia a cached prompt reaches its first token in about 0.1–0.15 s.
+
 ## 1. Quick start with curl
 
 ```bash
