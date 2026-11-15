@@ -23,12 +23,17 @@ ap.add_argument('--seconds', type=float, default=120); ap.add_argument('--warmup
 ap.add_argument('--concurrency', type=int, default=0, help='override every phase\'s concurrency (0 = profile value)')
 ap.add_argument('--max-concurrency', type=int, default=64); ap.add_argument('--temperature', type=float, default=0.6)
 ap.add_argument('--seed', type=int, default=1); ap.add_argument('--out', default='replay-results/run')
+ap.add_argument('--salt', default=None, help='fixed prompt salt, so two endpoints get byte-identical prompts')
+ap.add_argument('--api-key-env', default=None, help='environment variable holding the API key to send (instead of $BENCH_LEASE)')
+ap.add_argument('--max-input', type=int, default=0, help='skip samples with more input tokens than this (e.g. a smaller context window)')
+ap.add_argument('--tpm-limit', type=int, default=0, help='client-side cap on prompt tokens sent per minute (stay below a provider\'s limit)')
 ap.add_argument('--resummarize', default=None, help='recompute summary.json of an existing result directory from its requests_*.jsonl (no requests sent)')
 A = ap.parse_args()
 PROF = json.load(open(A.profile)); PH = {p['name']: p for p in PROF['phases']}
 H = {'Content-Type': 'application/json', 'User-Agent': 'glm-partner-replay/1.1'}
-if os.environ.get('BENCH_LEASE'): H['Authorization'] = 'Bearer ' + os.environ['BENCH_LEASE']
-SALT = uuid.uuid4().hex[:12]; TPL = 20.2; OVERHEAD = 12
+_key = os.environ.get(A.api_key_env) if A.api_key_env else os.environ.get('BENCH_LEASE')
+if _key: H['Authorization'] = 'Bearer ' + _key
+SALT = A.salt or uuid.uuid4().hex[:12]; TPL = 20.2; OVERHEAD = 12
 W = ['alpha', 'beta', 'gamma', 'delta', 'omega', 'sigma', 'kappa', 'theta']
 _docs = {}
 def doc(phase, lines):
@@ -50,7 +55,14 @@ def one(k, sample):
     body = dict(model=A.model, stream=True, stream_options={'include_usage': True}, temperature=A.temperature, top_p=0.95,
                 max_tokens=int(n_out), ignore_eos=True, messages=[{'role': 'user', 'content': prompt(phase, n_in, k)}],
                 chat_template_kwargs={'enable_thinking': bool(think)})
-    t0 = time.time(); first = None; usage = None; err = None
+    if A.tpm_limit:                                   # client-side token-rate cap
+        while True:
+            with TPM_LOCK:
+                now = time.time()
+                while TPM and now - TPM[0][0] > 60: TPM.pop(0)
+                if sum(n for _, n in TPM) + n_in <= A.tpm_limit: TPM.append((now, n_in)); break
+            time.sleep(0.2)
+    t0 = time.time(); first = None; usage = None; err = None; chunks = 0
     try:
         r = urllib.request.urlopen(urllib.request.Request(A.url.rstrip('/') + '/v1/chat/completions', json.dumps(body).encode(), H), timeout=900)
         for line in r:
@@ -62,14 +74,16 @@ def one(k, sample):
             if d.get('error'): err = str(d['error'])[:200]
             for ch in d.get('choices') or []:
                 dl = ch.get('delta') or {}
-                if (dl.get('reasoning_content') or dl.get('content')) and first is None: first = time.time() - t0
+                if dl.get('reasoning_content') or dl.get('content'):
+                    chunks += 1
+                    if first is None: first = time.time() - t0
     except urllib.error.HTTPError as e: err = 'HTTP %d %s' % (e.code, e.read()[:120].decode('utf8', 'ignore'))
     except Exception as e: err = repr(e)[:200]
     t = time.time() - t0; u = usage or {}; out = u.get('completion_tokens') or 0
     return dict(phase=phase, k=k, t0=t0, want_in=n_in, want_out=n_out, think=think, prompt_tokens=u.get('prompt_tokens'),
                 cached=(u.get('prompt_tokens_details') or {}).get('cached_tokens'), out=out, ttft=first, e2e=t,
-                tpot=(t - first) / (out - 1) if first and out > 1 else None, err=err)
-LOCK = threading.Lock()
+                tpot=(t - first) / (out - 1) if first and out > 1 else None, chunks=chunks, err=err)
+LOCK = threading.Lock(); TPM_LOCK = threading.Lock(); TPM = []
 def run(label, samples, conc):
     conc = min(conc, A.max_concurrency); nxt = [0]; res = []
     t_meas = time.time() + A.warmup; t_end = t_meas + A.seconds
@@ -107,6 +121,7 @@ def summarize(label, conc, res, t_meas=None):
                 exact_output_frac=round(sum(1 for r in ok if r['out'] == r['want_out']) / max(1, len(ok)), 3),
                 prompt_tokens_p50=q([r['prompt_tokens'] for r in ok], .5),
                 cache_hit=round(sum(r['cached'] or 0 for r in ok) / max(1, sum(r['prompt_tokens'] or 0 for r in ok)), 3),
+                tokens_per_chunk=round(sum(r['out'] for r in ok) / max(1, sum(r.get('chunks', 0) for r in ok)), 2),
                 error_samples=sorted({r['err'] for r in m if r['err']})[:3])
 def backend_config():
     try:
@@ -133,7 +148,7 @@ runs = []
 if A.mix:
     pool = []
     for p in PROF['phases']:
-        S = [[p['name']] + s for s in p['samples']]
+        S = [[p['name']] + s for s in p['samples'] if not A.max_input or s[0] <= A.max_input]
         random.Random('%d-%s' % (A.seed, p['name'])).shuffle(S); pool += S
     random.Random('%d-mix' % A.seed).shuffle(pool)
     manifest['mix_weights'] = {p['name']: round(p['observed_requests'] / sum(x['observed_requests'] for x in PROF['phases']), 3) for p in PROF['phases']}
@@ -143,7 +158,7 @@ if A.mix:
             for r in res: f.write(json.dumps(r) + '\n')
 else:
     for name in A.phases.split(','):
-        S = [[name] + s for s in PH[name]['samples']]; random.Random('%d-%s' % (A.seed, name)).shuffle(S)
+        S = [[name] + s for s in PH[name]['samples'] if not A.max_input or s[0] <= A.max_input]; random.Random('%d-%s' % (A.seed, name)).shuffle(S)
         for c in ([int(x) for x in A.levels.split(',')] if A.levels else [A.concurrency or PH[name]['concurrency']]):
             conc, res, tm = run(name, S, c); runs.append(dict(summarize(name, conc, res, tm), description=PH[name]['description'])); print(json.dumps(runs[-1]), flush=True)
             with open(os.path.join(A.out, 'requests_%s_c%d.jsonl' % (name, conc)), 'w') as f:
