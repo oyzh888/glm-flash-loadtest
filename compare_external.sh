@@ -10,12 +10,12 @@
 # If an endpoint is https://glm-flash.aitist.ai, its runs go through bench_lock.py (the test lock; >4 in flight needs it).
 # Shapes (from replay/profile_2026-11-13.json, the customer's 11-13 gateway traffic, sizes only):
 #   C 16-token ping c1 | B 14.5K cached prompt, short output c1 | E 3.4K prompts c2 | D 31.6K prompt + ~700-token output c1
-#   F 44K-120K long context c1 (45 s) | A ~100-token prompts, long outputs c4 and c16 | customer mix c1
+#   F 44K-120K long context c1 (45 s) | A ~100-token prompts, long outputs c4 / c16 / c32 / c64 | customer mix c1
 # Every run: fixed salt + seed (identical bytes on both endpoints), thinking on, output length fixed with ignore_eos,
 # 10 s warm-up + 60 s measured, prompts capped at 120K tokens, client-side cap of 3M prompt tokens/min (stay below provider limits).
 set -uo pipefail
 OUT=${1:-results-compare}; HERE=$(cd "$(dirname "$0")" && pwd); mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd)
-SHAPES=${SHAPES:-"B-1 C-1 D-1 E-2 F-1 A-4 A-16 MIX-1"}
+SHAPES=${SHAPES:-"B-1 C-1 D-1 E-2 F-1 A-4 A-16 A-32 A-64 MIX-1"}
 run_one(){ # side shape
   local side=$1 sh=$2 url model keyenv ph c secs
   eval url=\${${side}_URL} model=\${${side}_MODEL} keyenv=\${${side}_KEY_ENV:-}
