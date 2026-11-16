@@ -43,16 +43,16 @@ Notes that matter when you compare your numbers with ours:
 
 ## Compare two endpoints on identical requests (e.g. ours vs a provider's API)
 
-`compare_external.sh` sends the same customer-shaped requests (8 shapes from the customer's 11-13 traffic: short pings, cached 14.5K prompts, 31.6K + long output, 44K–120K long context, long outputs at 4 and 16 in flight, and the customer mix) to two OpenAI-compatible endpoints, back to back per shape, and prints one table. Both sides get byte-identical prompts (fixed salt and seed), thinking on, output lengths fixed with `ignore_eos`. A provider's key is read from the environment variable you name; it is never printed.
+`compare_external.sh` sends the same customer-shaped requests (8 shapes from the customer's 11-13 traffic: short pings, cached 14.5K prompts, 31.6K + long output, 44K–120K long context, long outputs at 4, 16, 32 and 64 in flight, and the customer mix) to two OpenAI-compatible endpoints, back to back per shape, and prints one table. Both sides get byte-identical prompts (fixed salt and seed), thinking on, output lengths fixed with `ignore_eos`. A provider's key is read from the environment variable you name; it is never printed.
 
 ```bash
 export ILMU_API_KEY=...            # your key for the other endpoint
 A_URL=https://api.ilmu.ai A_MODEL=glm-5.3-flash-ryt A_KEY_ENV=ILMU_API_KEY \
 B_URL=https://glm-flash.aitist.ai B_MODEL=glm-zt \
-bash compare_external.sh results-compare     # ≈ 20 min; SHAPES="B-1 MIX-1" to run a subset
+bash compare_external.sh results-compare     # ≈ 25 min; SHAPES="A-32 A-64" to run a subset
 ```
 
-Load stays below provider limits: at most 16 in flight, prompts ≤ 120K tokens, a client-side cap of 3M prompt tokens per minute. Run the client close to both endpoints (we use Singapore); TTFT includes your network round trip to each.
+Load stays below provider limits: at most 64 in flight (only the short-prompt shape goes above 16), prompts ≤ 120K tokens, a client-side cap of 3M prompt tokens per minute. Run the client close to both endpoints (we use Singapore); TTFT includes your network round trip to each.
 
 ## 1. The workload
 
